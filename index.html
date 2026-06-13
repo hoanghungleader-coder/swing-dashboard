@@ -1,0 +1,84 @@
+<!doctype html><html lang="vi"><head><meta charset="utf-8">
+<meta http-equiv="Cache-Control" content="no-cache, must-revalidate">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Swing T+ Live — Săn Cổ Phiếu</title>
+<style>
+:root{--bg:#061421;--card:#0d2438;--bd:#1c3a52;--tx:#cbe5f0;--mut:#7c9cb0;--cy:#22d3ee;--g:#34d399;--r:#f87171}
+*{box-sizing:border-box}body{margin:0;font-family:-apple-system,Segoe UI,Roboto,sans-serif;background:linear-gradient(180deg,#061421,#04101a);color:var(--tx);padding:16px}
+h1{font-size:19px;color:var(--cy);margin:0 0 4px}.mut{color:var(--mut);font-size:12px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:14px;margin:12px 0}
+table{border-collapse:collapse;width:100%;font-size:13px}th,td{padding:7px 9px;border-bottom:1px solid var(--bd);text-align:right}
+th:first-child,td:first-child{text-align:left}th{color:#67e8f9;font-size:11px;text-transform:uppercase}
+.g{color:var(--g)}.r{color:var(--r)}.mono{font-variant-numeric:tabular-nums}
+.kpi{display:flex;gap:14px;flex-wrap:wrap}.kpi div{background:var(--card);border:1px solid var(--bd);border-radius:10px;padding:10px 16px;min-width:140px}
+.kpi b{font-size:22px}.tag{font-size:10px;padding:1px 6px;border-radius:5px;background:#13304a;color:#9fd}
+.g2{background:#3b2f10;color:#fbbf24}
+.hd{display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:12px}
+.navbox{background:var(--card);border:1.5px solid var(--cy);border-radius:12px;padding:8px 20px;text-align:center;min-width:190px}
+.navbox .l{color:var(--cy);font-size:12px;font-weight:700;letter-spacing:1px}
+.navbox .p{font-size:30px;font-weight:800;font-variant-numeric:tabular-nums}
+.tabs{display:flex;gap:8px;margin:14px 0 4px}
+.tab{background:var(--card);border:1px solid var(--bd);color:var(--mut);border-radius:9px;padding:7px 16px;font-size:13px;font-weight:700;cursor:pointer}
+.tab.on{color:#04101a;background:var(--cy);border-color:var(--cy)}
+.scroll{overflow-x:auto}details{margin:3px 0}summary{cursor:pointer;color:#67e8f9;font-size:12px}.tr{font-size:12px;color:var(--mut)}
+</style></head><body>
+<div class="hd">
+ <div>
+  <h1>🌊 Swing T+ Live — Săn Cổ Phiếu</h1>
+  <div class="mut">Bầy biển (cổ phiếu, giữ nhiều phiên) · <span id="ns"></span> chiến lược · vốn ảo 1 tỷ/con · giá: <b id="src" style="color:#cbe5f0"></b></div>
+  <div class="mut" style="font-size:11px;margin-top:2px">Dữ liệu đến <b id="dd" style="color:#cbe5f0"></b> · sinh lúc <span id="upd"></span> · tự làm mới 60s</div>
+ </div>
+ <div class="navbox"><div class="l">TỔNG TÀI SẢN</div><div class="p" id="nav">—</div><div class="mut"><span id="ret"></span></div></div>
+</div>
+<div class="kpi" id="kpi"></div>
+<div class="tabs">
+ <button class="tab on" data-f="all" onclick="flt('all',this)">Tất cả</button>
+ <button class="tab" data-f="gen1" onclick="flt('gen1',this)">Gen-1 (14)</button>
+ <button class="tab" data-f="gen2" onclick="flt('gen2',this)">Gen-2 tinh hoa (6)</button>
+</div>
+<div class="card"><div class="scroll"><table id="tbl"><thead><tr>
+<th>Con</th><th>Gen</th><th>Vốn còn lại</th><th>%</th><th>Lãi/lỗ đã chốt</th><th>Lãi/lỗ tạm tính</th><th>WR</th><th>Lệnh</th><th>Đang giữ</th>
+</tr></thead><tbody></tbody></table></div>
+<div class="mut" style="margin-top:6px">Đã chốt = lãi/lỗ từ các lệnh đã bán. Tạm tính = lãi/lỗ các mã đang nắm theo giá hiện tại.</div></div>
+<div class="card"><h3 style="margin:0 0 8px;font-size:14px">📌 Vị thế đang giữ</h3><div class="scroll"><table id="otbl"><thead><tr>
+<th>Con</th><th>Mã</th><th>SL</th><th>Giá vào</th><th>Giá nay</th><th>Lãi/lỗ %</th><th>Lãi/lỗ (VNĐ)</th><th>Giữ</th><th>T+</th><th>Stop</th>
+</tr></thead><tbody></tbody></table></div></div>
+<div class="card"><h3 style="margin:0 0 8px;font-size:14px">🧾 Lệnh gần đây</h3><div id="det"></div></div>
+<script>
+let DATA=null,F='all';
+const vm=v=>{const a=Math.abs(v),s=v<0?'-':(v>0?'+':'');return a>=1e9?s+(a/1e9).toFixed(2)+' tỷ':a>=1e6?s+(a/1e6).toFixed(1)+'tr':a>=1e3?s+Math.round(a/1e3)+'k':s+Math.round(a);};
+const m=v=>(v/1e6).toFixed(0)+'tr';const cls=x=>x>0?'g':(x<0?'r':'');const f2=x=>(x>0?'+':'')+Number(x).toFixed(2);
+function flt(x,el){F=x;document.querySelectorAll('.tab').forEach(t=>t.classList.remove('on'));el.classList.add('on');render(DATA);}
+async function load(){try{DATA=await (await fetch('state.json?t='+Date.now())).json();render(DATA);}catch(e){document.getElementById('upd').textContent='lỗi tải state.json';}}
+function render(d){if(!d)return;const t=d.totals;
+ document.getElementById('ns').textContent=t.nstrat;document.getElementById('src').textContent=d.price_src;
+ document.getElementById('dd').textContent=d.data_date;document.getElementById('upd').textContent=d.updated;
+ document.getElementById('nav').textContent=m(t.nav);
+ document.getElementById('ret').innerHTML='<span class="'+cls(t.ret)+'">'+f2(t.ret)+'%</span> · vốn '+m(t.cap);
+ document.getElementById('kpi').innerHTML=
+  '<div>Lãi/lỗ đã chốt<br><b class="'+cls(t.realized)+'">'+vm(t.realized)+'</b></div>'+
+  '<div>Lãi/lỗ tạm tính<br><b class="'+cls(t.unreal)+'">'+vm(t.unreal)+'</b></div>'+
+  '<div>Win rate<br><b>'+(t.wr!=null?t.wr+'%':'–')+'</b><br><span class="mut">'+t.w+'T · '+t.l+'B · '+t.n+' lệnh</span></div>'+
+  '<div>Vị thế đang giữ<br><b>'+t.nopen+'</b></div>';
+ const rows=d.rows.filter(r=>F=='all'||r.gen==F);
+ let h='';for(const s of rows){const gb=s.gen=='gen2'?'<span class="tag g2">G2</span>':'<span class="tag">G1</span>';
+  h+='<tr><td>'+s.icon+' <b>'+s.name+'</b></td><td>'+gb+'</td><td class="mono"><b>'+m(s.nav)+'</b></td>'+
+  '<td class="mono '+cls(s.ret)+'">'+f2(s.ret)+'%</td><td class="mono '+cls(s.realized)+'">'+vm(s.realized)+'</td>'+
+  '<td class="mono '+cls(s.unreal)+'">'+vm(s.unreal)+'</td><td class="mono">'+(s.wr!=null?s.wr+'%':'–')+'</td>'+
+  '<td class="mono">'+s.n+'</td><td class="mono">'+s.nopen+'</td></tr>';}
+ document.querySelector('#tbl tbody').innerHTML=h||'<tr><td colspan="9" class="mut">—</td></tr>';
+ let oh='';for(const s of rows){for(const p of s.poss){
+  oh+='<tr><td>'+s.icon+' '+s.name+'</td><td><b>'+p.tk+'</b></td><td class="mono">'+p.qty.toLocaleString()+'</td>'+
+  '<td class="mono">'+p.avg.toLocaleString()+'</td><td class="mono">'+(p.cur!=null?p.cur.toLocaleString():'–')+'</td>'+
+  '<td class="mono '+cls(p.upct)+'">'+(p.upct!=null?f2(p.upct)+'%':'–')+'</td><td class="mono '+cls(p.uvnd)+'">'+vm(p.uvnd)+'</td>'+
+  '<td class="mono">'+p.dh+'p</td><td><span class="tag">'+p.tplus+'</span></td><td class="mono mut">'+p.stop.toLocaleString()+'</td></tr>';}}
+ document.querySelector('#otbl tbody').innerHTML=oh||'<tr><td colspan="10" class="mut">Không có vị thế mở.</td></tr>';
+ let dh='';for(const s of rows){if(!s.recent||!s.recent.length)continue;
+  dh+='<details><summary>'+s.icon+' <b>'+s.name+'</b> · '+s.n+' lệnh đã chốt</summary>';
+  for(const x of s.recent){const c=x.act=='SELL'?cls(x.pnl):'mut';
+   dh+='<div class="tr">'+x.ngay+' · '+(x.act=='BUY'?'🟢 MUA':'🔴 BÁN')+' '+x.tk+' @'+x.px.toLocaleString()+' ×'+x.qty.toLocaleString()+(x.act=='SELL'?' · <span class="'+cls(x.pnl)+'">'+vm(x.pnl)+' ('+f2(x.pct)+'%)</span> · '+x.ly:'')+'</div>';}
+  dh+='</details>';}
+ document.getElementById('det').innerHTML=dh||'<span class="mut">Chưa có lệnh.</span>';
+}
+load();setInterval(load,60000);
+</script></body></html>
