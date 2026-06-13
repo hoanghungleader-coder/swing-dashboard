@@ -1,9 +1,0 @@
-{
-  // Cau hinh Cloudflare Workers — phuc vu trang TINH (index.html + state.json).
-  // Khi Cloudflare connect repo nay, no deploy ra: swing-dashboard.<subdomain>.workers.dev
-  "name": "swing-dashboard",
-  "compatibility_date": "2025-01-01",
-  "assets": {
-    "directory": "."
-  }
-}
